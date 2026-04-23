@@ -1,17 +1,24 @@
-.ClubList{
-    border: 1px ;
-    border-radius: 10px;
-    margin-top: 20px;
-    margin-bottom: 20px;
-    background-color: rgb(255, 85, 85);
-}
-.ClubList h1{
+.Card h1{
     font-family: 'Courier New', Courier, monospace;
     color: rgb(0,0,0);
-}
-.clublisttimeandplace{
+    margin-right:100px;
     display:flex;
+    margin-bottom:0px;
+    padding-bottom:5px;
 }
-#clublistdesc{
-    background-color:rgb(255, 128, 128)
+.Card{
+    border: 1px ;
+    border-radius: 10px;
+    margin-top: 100px;
+    margin-bottom: 20px;
+    margin-left: 50px;
+    background-color: darkorange;
+    padding-left:20px;
+}
+.Card h5,h3,p{
+    display:flex;
+    margin-top: 0px;
+    padding-top:0px;
+    margin-bottom: 0px;
+    padding-bottom:5px;
 }
