@@ -9,13 +9,19 @@
 .Card{
     border: 1px ;
     border-radius: 10px;
-    margin-top: 100px;
-    margin-bottom: 20px;
+    margin-top: 30px;
+    margin-bottom: 10px;
     margin-left: 50px;
-    background-color: darkorange;
+    background-color: rgb(223, 124, 124);
     padding-left:20px;
 }
-.Card h5,h3,p{
+.top{
+    display:flex;
+}
+.top h3{
+    margin-top: 30px;
+}
+.Card h5,p{
     display:flex;
     margin-top: 0px;
     padding-top:0px;

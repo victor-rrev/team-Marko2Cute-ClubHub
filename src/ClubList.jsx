@@ -3,8 +3,11 @@ import {usestate} from 'react'
 function ClubList({name,description,categories,time,location}) {
   return (
     <div className="Card">
-      <h1>{name}</h1>
-      <h3>{time}, @{location}</h3>
+      <div className="top">
+        <h1>{name}</h1>
+        <h3>{time}, @{location}</h3>  
+      </div>
+      
       <i className="heart"></i>
       {/*{categories.map((item,index)=>(
         <div key={item} className="card">

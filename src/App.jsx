@@ -1,13 +1,12 @@
 import './App.css'
 import { useState } from 'react'
 import { CiSearch } from 'react-icons/ci'
-import Sidebar from './Sidebar'
-import Discover from './Discover'
-import Posts from './Posts'
-import Events from './Events'
-import Account from './Account'
-import AccountProfile from './AccountProfile'
 import Sidebar from './Sidebar.jsx'
+import Discover from './Discover.jsx'
+import Posts from './Posts.jsx'
+import Events from './Events.jsx'
+import Account from './Account.jsx'
+import AccountProfile from './AccountProfile.jsx'
 import ClubList from './ClubList.jsx'
 
 function App() {
@@ -44,7 +43,6 @@ function App() {
         {page == "posts" && <Posts/>}
         {page == "events" && <Events/>}
         {page == "account" && <Account/>}
-      <ClubList name="A Club" description="We draw As" categories="fun" time="never" location="CCA"/>
       </main>
     </div>
   )
