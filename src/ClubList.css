@@ -29,3 +29,22 @@
     margin-bottom: 0px;
     padding-bottom:5px;
 }
+.popup-overlay{
+    top:0;
+    left:0;
+    position:fixed;
+    width:100vw;
+    height:100vh;
+    background-color: rgba(255, 0, 0, 0); /* Semi-transparent black */
+    display: flex;
+    justify-content: center; /* Centers popup horizontally */
+    align-items: center;
+    z-index: 1001;
+}
+.popup-content{
+    width:90vw;
+    height:90vh;
+    background-color: rgb(223, 124, 124);
+    border: 1px solid rgb(214, 161, 161);
+    border-radius: 20px;
+}
