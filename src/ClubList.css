@@ -36,15 +36,15 @@
     position:fixed;
     width:100vw;
     height:100vh;
-    background-color: rgba(255, 0, 0, 0); /* Semi-transparent black */
+    background-color: rgba(0, 0, 0, 0.33333); /* Semi-transparent black */
     display: flex;
     justify-content: center; /* Centers popup horizontally */
     align-items: center;
     z-index: 1001;
 }
 .popup-box{
-    width:90vw;
-    height:90vh;
+    width:91vw;
+    height:91vh;
     background-color: rgb(223, 124, 124);
     border: 1px solid rgb(214, 161, 161);
     border-radius: 20px;
