@@ -1,24 +1,33 @@
 import './Sidebar.css';
 import { FiCompass, FiFileText, FiCalendar, FiUser } from 'react-icons/fi';
+import { Link } from 'react-router-dom';
 
 function Sidebar(){
     return (
         <div className = "sidebar">
             <div className = "side-bar-item">
-                <FiCompass size = {60} />
-                <span>Discover</span>
+                <Link to="/discover">
+                    <FiCompass size = {60} />
+                    <span>Discover</span>
+                </Link>
             </div>
             <div className = "side-bar-item">
-                <FiFileText size = {60} />
-                <span>Posts</span>
+                <Link to="/posts">
+                    <FiFileText size = {60} />
+                    <span>Posts</span>
+                </Link>
             </div>
             <div className = "side-bar-item">
-                <FiCalendar size = {60} />
-                <span>Events</span>
+                <Link to="/events">
+                    <FiCalendar size = {60} />
+                    <span>Events</span>
+                </Link>
             </div>
             <div className = "side-bar-item">
-                <FiUser size = {60} />
-                <span>Account</span>
+                <Link to="/account">
+                    <FiUser size = {60} />
+                    <span>Account</span>
+                </Link>
             </div>
         </div>
     )
