@@ -1,103 +1,137 @@
 import { useState } from 'react'
 import AccountProfile from './AccountProfile'
+import './Account.css'
 
-function Account() {
-  const [displayName, setDisplayName] = useState('Your Name')
-  const [description, setDescription] = useState('Add a short summary about yourself here.')
-  const [isEditing, setIsEditing] = useState(true)
-  const [saveMessage, setSaveMessage] = useState('')
+const MAX_BIO = 300
 
-  const userClubs = ['Robotics Club', 'Art Society', 'Eco Action']
-  const upcomingEvents = [
-    'Robotics Workshop — Apr 30',
-    'Art Show — May 5',
-    'Campus Cleanup — May 10',
-    'Science Fair — May 15',
-    'Spring Concert — May 18',
-    'Debate Championship — May 22',
-    'Art Gallery Opening — May 25',
-    'End of Year Picnic — Jun 1'
-  ]
+export default function Account() {
+  const [isEditing, setIsEditing] = useState(false)
+  const [bio, setBio] = useState('')
+  const [showLimitPopup, setShowLimitPopup] = useState(false)
 
-  const handleSave = () => {
-    setIsEditing(false)
-    setSaveMessage('Profile draft is ready to persist to Firestore.')
-    // TODO: connect this handler to Firestore save logic once the user profile service is available.
+  // TODO: replace with real Firebase/Google auth data
+  const name = 'Your Name'
+  const clubs = []
+  const upcomingEvents = []
+
+  const handleBioChange = (e) => {
+    if (e.target.value.length > MAX_BIO) {
+      setShowLimitPopup(true)
+      return
+    }
+    setBio(e.target.value)
+  }
+
+  const handleGoogleLogin = () => {
+    // TODO: wire up Firebase Google auth here
+    console.log('Google login clicked')
   }
 
   return (
     <div className="account-page">
-      <div className="account-column">
-        <div className="account-box profile-box">
-          <AccountProfile variant="large" />
+      <div className="account-left">
 
-          <div className="profile-details">
-            <div className="profile-details-header">
-              <div>
-                <h2>{displayName || 'Unnamed Student'}</h2>
-                <p className="profile-subtitle">Update your name and bio below.</p>
-              </div>
-              <button
-                type="button"
-                className="edit-button"
-                onClick={() => setIsEditing((value) => !value)}
-              >
-                {isEditing ? 'Preview' : 'Edit'}
-              </button>
-            </div>
+        {/* Avatar + Profile card */}
+        <div className="profile-row">
+          <div className="avatar-circle">
+            <AccountProfile variant="large" />
+          </div>
 
-            <label className="profile-field">
-              <span className="profile-label">Full name</span>
-              <input
-                className="profile-input"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Enter your name"
-                readOnly={!isEditing}
-              />
-            </label>
-
-            <label className="profile-field">
-              <span className="profile-label">Short description</span>
-              <textarea
-                className="profile-textarea"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={5}
-                placeholder="Tell people about yourself"
-                readOnly={!isEditing}
-              />
-            </label>
-
-            <div className="button-row">
-              <button type="button" className="save-button" onClick={handleSave}>
-                Save profile
-              </button>
-              {saveMessage && <span className="save-message">{saveMessage}</span>}
-            </div>
+          <div className="account-card profile-card">
+            {isEditing ? (
+              <>
+                {/* Name is read-only — pulled from school Google account */}
+                <div className="profile-card-header">
+                  <h2 className="profile-name">{name}</h2>
+                  <button className="acct-btn" onClick={() => setIsEditing(false)}>
+                    Save
+                  </button>
+                </div>
+                <div className="bio-input-wrapper">
+                  <textarea
+                    className="edit-bio-input"
+                    value={bio}
+                    onChange={handleBioChange}
+                    rows={4}
+                    placeholder="Tell people about yourself"
+                    maxLength={MAX_BIO + 1}
+                  />
+                  <span className={`char-count ${bio.length >= MAX_BIO ? 'at-limit' : ''}`}>
+                    {bio.length}/{MAX_BIO}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="profile-card-header">
+                  <h2 className="profile-name">{name}</h2>
+                  <button className="acct-btn-outline" onClick={() => setIsEditing(true)}>
+                    Edit
+                  </button>
+                </div>
+                <p className="profile-bio">{bio || 'No bio yet.'}</p>
+              </>
+            )}
           </div>
         </div>
 
-        <div className="account-box">
-          <h3>My Clubs</h3>
-          <ul className="account-list">
-            {userClubs.map((club) => (
-              <li key={club}>{club}</li>
-            ))}
-          </ul>
+        {/* My Clubs */}
+        <div className="account-card">
+          <h3 className="card-heading">My Clubs</h3>
+          {clubs.length === 0
+            ? <p className="empty-state">No clubs yet.</p>
+            : <ul className="acct-list">{clubs.map(c => <li key={c}>{c}</li>)}</ul>
+          }
         </div>
 
-        <div className="account-box">
-          <h3>My Upcoming Events</h3>
-          <ul className="account-list">
-            {upcomingEvents.map((eventItem) => (
-              <li key={eventItem}>{eventItem}</li>
-            ))}
-          </ul>
+        {/* My Upcoming Events */}
+        <div className="account-card">
+          <h3 className="card-heading">My Upcoming Events</h3>
+          {upcomingEvents.length === 0
+            ? <p className="empty-state">No upcoming events.</p>
+            : (
+              <ul className="acct-list events-list">
+                {upcomingEvents.map((ev, i) => (
+                  <li key={i}>
+                    <span className="ev-label">{ev.label}</span>
+                    <span className="ev-time"> - {ev.time}</span>
+                  </li>
+                ))}
+              </ul>
+            )
+          }
         </div>
+
+        {/* Personalized Calendar */}
+        <div className="account-card">
+          <h3 className="card-heading">Personalized Calendar</h3>
+          <p className="empty-state">Google Calendar integration coming soon.</p>
+        </div>
+
+        {/* Google Login button */}
+        <button className="google-login-btn" onClick={handleGoogleLogin}>
+          <img
+            src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+            alt="Google"
+            className="google-icon"
+          />
+          Sign in with Google
+        </button>
+
       </div>
+
+      {/* ── Bio limit popup ── */}
+      {showLimitPopup && (
+        <div className="popup-overlay" onClick={() => setShowLimitPopup(false)}>
+          <div className="limit-popup" onClick={e => e.stopPropagation()}>
+            <h3>Character limit reached</h3>
+            <p>Your bio cannot exceed {MAX_BIO} characters.</p>
+            <button className="acct-btn" onClick={() => setShowLimitPopup(false)}>
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
-
-export default Account;
