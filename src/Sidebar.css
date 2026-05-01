@@ -10,7 +10,7 @@
     height: fit-content;
     border-radius: 50px;
     position: fixed;
-    left: 70px;
+    left: 3vw;
     top: 50%;
     transform: translateY(-50%);
 }
