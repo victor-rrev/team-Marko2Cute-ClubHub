@@ -5,6 +5,8 @@ import Sidebar from './Sidebar.jsx'
 import Discover from './Discover.jsx'
 import Posts from './Posts.jsx'
 import Events from './Events.jsx'
+import SportsEvents from './SportsEvents.jsx'
+import ClubEvents from './ClubEvents.jsx'
 import Account from './Account.jsx'
 import AccountProfile from './AccountProfile.jsx'
 import ClubList from './ClubList.jsx'
@@ -43,6 +45,8 @@ function AppContent() {
           <Route path="/discover" element={<Discover />} />
           <Route path="/posts" element={<Posts />} />
           <Route path="/events" element={<Events />} />
+          <Route path="/SportsEvents" element={<SportsEvents />} />
+          <Route path="/ClubEvents" element={<ClubEvents />} />
           <Route path="/account" element={<Account />} />
         </Routes>
       </main>

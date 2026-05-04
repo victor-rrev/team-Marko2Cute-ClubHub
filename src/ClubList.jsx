@@ -6,7 +6,11 @@ function ClubList({name,description,categories,time,location}) {
   return (
     <>
       <div className="Card" 
-          onClick={() => setIsOpen(true)} 
+          onClick={(e) => {
+            e.stopPropagation()
+            e.preventDefault()
+            setIsOpen(true)
+          }} 
           style={{ cursor: 'pointer' }}>
         <div className="top">
           <h1>{name}</h1>
@@ -26,10 +30,18 @@ function ClubList({name,description,categories,time,location}) {
         </div>
       </div>
       {isOpen && (
-        <div className="popup-overlay" onClick={() => setIsOpen(false)}>
+        <div className="popup-overlay" onClick={(e) => {
+            e.stopPropagation()
+            e.preventDefault()
+            setIsOpen(false)
+          }}>
           <div className="popup-box" onClick={(e) => e.stopPropagation()}>
             <RxCross2 class="closebutton" size={30}
-              onClick={() => setIsOpen(false)} 
+              onClick={(e) => {
+            e.stopPropagation()
+            e.preventDefault()
+            setIsOpen(false)
+          }} 
               style={{ cursor: 'pointer' }}  />
             <div className="popupContent">
               <h1>{name}</h1>

@@ -1,0 +1,29 @@
+#clubs{
+    overflow:hidden;
+    padding-bottom:6rem;
+}
+.sticky-header {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    font-size:106.7%;
+    transform: translateX(-50%);
+    background-color: rgb(210, 60, 60);
+    z-index: 100;
+    padding: 1rem 2rem;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    border: none;
+    border-radius: 999px;
+    cursor: pointer;
+    height: 55px;
+    margin-top:90vh;
+}
+.title{
+    color: rgb(67, 12, 12);
+    display:flex;
+    justify-content: center;
+    position:relative;
+    margin-top:20px;
+    margin-bottom:40px;
+    left:-9vw;
+}
