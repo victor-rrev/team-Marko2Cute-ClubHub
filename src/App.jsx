@@ -17,7 +17,7 @@ function AppContent() {
   const [searchTerm, setSearchTerm] = useState('')
   const location = useLocation()
   const { user, loading, isOnboarded, signIn } = useAuth()
-
+  /*
   // 1. Still resolving auth state
   if (loading) {
     return (
@@ -55,6 +55,7 @@ function AppContent() {
   }
 
   // 4. Fully signed in and onboarded — show the app
+  */
   return (
     <div className="app">
       <Sidebar />
