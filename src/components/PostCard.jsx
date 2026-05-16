@@ -3,11 +3,11 @@ import { Link, useLocation } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
   FiMessageSquare,
-  FiHeart,
   FiShare2,
   FiEdit2,
   FiTrash2,
 } from 'react-icons/fi'
+import ReactionBar from './ReactionBar'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { getUser } from '../services/users'
@@ -210,10 +210,7 @@ export default function PostCard({ post: initialPost }) {
           <FiMessageSquare className="size-3.5" />
           {post.commentCount ?? 0} {post.commentCount === 1 ? 'comment' : 'comments'}
         </Link>
-        <span className="inline-flex items-center gap-1">
-          <FiHeart className="size-3.5" />
-          {post.reactionCount ?? 0}
-        </span>
+        <ReactionBar postId={post.id} />
         <button
           onClick={handleShare}
           className="inline-flex items-center gap-1 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"

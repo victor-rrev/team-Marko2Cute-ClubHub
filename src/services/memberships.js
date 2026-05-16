@@ -53,10 +53,12 @@ export async function joinClub(clubId) {
   const clubSnap = await getDoc(doc(db, 'clubs', clubId));
   if (!clubSnap.exists()) throw new Error('Club not found');
   const club = clubSnap.data();
+  const uid = auth.currentUser.uid;
   if (club.deletedAt) throw new Error('Club has been deleted');
+  const blockedSnap = await getDoc(doc(db, 'clubs', clubId, 'blockedUsers', uid))
+  if (blockedSnap.exists()) throw new Error('You have been blocked from this club')
 
   const status = club.joinPolicy === 'open' ? 'active' : 'pending';
-  const uid = auth.currentUser.uid;
   await setDoc(membershipDoc(uid, clubId), {
     userId: uid,
     clubId,
@@ -198,4 +200,45 @@ export async function listUserMemberships(userId) {
       where('status', '==', 'active'),
   ));
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+/**
+ * Blocks a user from joining the club permanently.
+ * Also removes any existing membership or pending request.
+ *
+ * @param {string} userId
+ * @param {string} clubId
+ * @param {string} displayName  for record-keeping
+ * @returns {Promise<void>}
+ */
+export async function blockUser(userId, clubId, displayName) {
+  await setDoc(doc(db, 'clubs', clubId, 'blockedUsers', userId), {
+    userId,
+    displayName: displayName || 'User',
+    blockedAt: serverTimestamp(),
+  })
+  // also remove their membership/pending request if any
+  await deleteDoc(membershipDoc(userId, clubId))
+}
+
+/**
+ * Unblocks a previously blocked user, allowing them to request again.
+ *
+ * @param {string} userId
+ * @param {string} clubId
+ * @returns {Promise<void>}
+ */
+export async function unblockUser(userId, clubId) {
+  await deleteDoc(doc(db, 'clubs', clubId, 'blockedUsers', userId))
+}
+
+/**
+ * Lists all blocked users for a club.
+ *
+ * @param {string} clubId
+ * @returns {Promise<Array<object>>}
+ */
+export async function listBlockedUsers(clubId) {
+  const snap = await getDocs(collection(db, 'clubs', clubId, 'blockedUsers'))
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
 }
