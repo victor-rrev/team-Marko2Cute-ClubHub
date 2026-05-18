@@ -3,15 +3,20 @@ import { useParams, Link, useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { FiArrowLeft, FiEdit2, FiLock, FiUsers } from 'react-icons/fi'
 import { getClub } from '../services/clubs'
+import { db } from '../lib/firebase'
+import { doc, getDoc } from 'firebase/firestore'
 import {
   approveMember,
+  blockUser,
   getMyMembership,
   joinClub,
   kickMember,
   leaveClub,
+  listBlockedUsers,
   listClubMembers,
   listPendingRequests,
   setMemberRole,
+  unblockUser,
 } from '../services/memberships'
 import { listClubPosts } from '../services/posts'
 import { listClubEvents } from '../services/events'
@@ -44,12 +49,14 @@ export default function ClubDetail() {
   const [membership, setMembership] = useState(null)
   const [loading, setLoading] = useState(true)
   const [actionPending, setActionPending] = useState(false)
+  const [isBlocked, setIsBlocked] = useState(false)
 
   const [tab, setTab] = useState('posts')
   const [posts, setPosts] = useState([])
   const [events, setEvents] = useState([])
   const [members, setMembers] = useState([])
   const [pendingRequests, setPendingRequests] = useState([])
+  const [blockedUsers, setBlockedUsers] = useState([])
   const [showEventForm, setShowEventForm] = useState(false)
   const [tabRefresh, setTabRefresh] = useState(0)
 
@@ -80,6 +87,10 @@ export default function ClubDetail() {
         }
         setClub(c)
         setMembership(m)
+        if (!m) {
+          const blockedSnap = await getDoc(doc(db, 'clubs', clubId, 'blockedUsers', user.uid))
+          if (!cancelled) setIsBlocked(blockedSnap.exists())
+        }
       } catch (err) {
         console.error(
           '[club-detail] load failed:',
@@ -113,10 +124,18 @@ export default function ClubDetail() {
           const result = await listClubMembers(clubId)
           if (!cancelled) setMembers(result)
           if (isAdmin) {
-            const pending = await listPendingRequests(clubId)
-            if (!cancelled) setPendingRequests(pending)
+          const [pending, blocked] = await Promise.all([
+            listPendingRequests(clubId),
+            listBlockedUsers(clubId),
+          ])
+          if (!cancelled) {
+            const blockedIds = new Set(blocked.map((b) => b.userId))
+            setPendingRequests(pending.filter((p) => !blockedIds.has(p.userId)))
+            setBlockedUsers(blocked)
+          }
           } else if (!cancelled) {
             setPendingRequests([])
+            setBlockedUsers([])
           }
         }
       } catch (err) {
@@ -149,7 +168,11 @@ export default function ClubDetail() {
         '—',
         err.message,
       )
-      toast.error("Couldn't join.")
+      toast.error(
+        err.message === 'You have been blocked from this club'
+          ? 'You are blocked from joining this club.'
+          : "Couldn't join."
+      )
     } finally {
       setActionPending(false)
     }
@@ -246,6 +269,16 @@ export default function ClubDetail() {
                 />
               </div>
             </div>
+          </div>
+          <div className="shrink-0">
+            <JoinButton
+              membership={membership}
+              joinPolicy={club.joinPolicy}
+              actionPending={actionPending}
+              isBlocked={isBlocked}
+              onJoin={handleJoin}
+              onLeave={handleLeave}
+            />
           </div>
         </div>
         {club.description && (
@@ -374,13 +407,41 @@ export default function ClubDetail() {
               </ul>
             </div>
           )}
+
+          {isAdmin && blockedUsers.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                Blocked Users ({blockedUsers.length})
+              </h3>
+              <ul className="space-y-2">
+                {blockedUsers.map((b) => (
+                  <BlockedRow
+                    key={b.id}
+                    blocked={b}
+                    clubId={clubId}
+                    onActioned={refreshTab}
+                  />
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
     </div>
   )
 }
 
-function JoinButton({ membership, joinPolicy, actionPending, onJoin, onLeave }) {
+function JoinButton({ membership, joinPolicy, actionPending, isBlocked, onJoin, onLeave }) {
+  if (isBlocked) {
+    return (
+      <button
+        onClick={() => toast.error('You have been blocked from this club.')}
+        className="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-sm font-medium cursor-pointer"
+      >
+        Blocked
+      </button>
+    )
+  }
   if (!membership) {
     return (
       <button
@@ -520,6 +581,11 @@ function MemberRow({
         </p>
         <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">
           {membership.role}
+          {memberUser?.gradeLevel && (
+            <span className="ml-1">
+              · {memberUser.gradeLevel[0].toUpperCase() + memberUser.gradeLevel.slice(1)} · {memberUser.pronouns}
+            </span>
+          )}
         </p>
       </div>
       {canChangeRole && (
@@ -556,9 +622,7 @@ function PendingRow({ membership, clubId, onActioned }) {
     getUser(membership.userId).then((u) => {
       if (!cancelled) setMemberUser(u)
     })
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true }
   }, [membership.userId])
 
   const displayName = memberUser?.displayName || 'User'
@@ -570,12 +634,7 @@ function PendingRow({ membership, clubId, onActioned }) {
       toast.success('Request approved.')
       onActioned?.()
     } catch (err) {
-      console.error(
-        '[pending-row] approve failed:',
-        err.code || err.name,
-        '—',
-        err.message,
-      )
+      console.error('[pending-row] approve failed:', err.code || err.name, '—', err.message)
       toast.error("Couldn't approve.")
       setBusy(false)
     }
@@ -589,13 +648,22 @@ function PendingRow({ membership, clubId, onActioned }) {
       toast.success('Request rejected.')
       onActioned?.()
     } catch (err) {
-      console.error(
-        '[pending-row] reject failed:',
-        err.code || err.name,
-        '—',
-        err.message,
-      )
+      console.error('[pending-row] reject failed:', err.code || err.name, '—', err.message)
       toast.error("Couldn't reject.")
+      setBusy(false)
+    }
+  }
+
+  const handleBlock = async () => {
+    if (!window.confirm(`Permanently block ${displayName} from joining?`)) return
+    setBusy(true)
+    try {
+      await blockUser(membership.userId, clubId, displayName)
+      toast.success(`${displayName} has been blocked.`)
+      onActioned?.()
+    } catch (err) {
+      console.error('[pending-row] block failed:', err.code || err.name, '—', err.message)
+      toast.error("Couldn't block user.")
       setBusy(false)
     }
   }
@@ -603,18 +671,12 @@ function PendingRow({ membership, clubId, onActioned }) {
   return (
     <li className="flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-gray-900 border border-orange-300 dark:border-orange-700">
       {memberUser?.photoURL ? (
-        <img
-          src={memberUser.photoURL}
-          alt=""
-          className="size-8 rounded-full object-cover"
-        />
+        <img src={memberUser.photoURL} alt="" className="size-8 rounded-full object-cover" />
       ) : (
         <div className="size-8 rounded-full bg-gray-300 dark:bg-gray-700" />
       )}
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-          {displayName}
-        </p>
+        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{displayName}</p>
         <p className="text-xs text-gray-500 dark:text-gray-400">Wants to join</p>
       </div>
       <button
@@ -630,6 +692,63 @@ function PendingRow({ membership, clubId, onActioned }) {
         className="px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-60 text-gray-700 dark:text-gray-300 text-xs font-medium transition-colors"
       >
         Reject
+      </button>
+      <button
+        onClick={handleBlock}
+        disabled={busy}
+        className="px-3 py-1 rounded-lg border border-red-300 dark:border-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-60 text-red-600 dark:text-red-400 text-xs font-medium transition-colors"
+      >
+        Block
+      </button>
+    </li>
+  )
+}
+
+function BlockedRow({ blocked, clubId, onActioned }) {
+  const [memberUser, setMemberUser] = useState(null)
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    getUser(blocked.userId).then((u) => {
+      if (!cancelled) setMemberUser(u)
+    })
+    return () => { cancelled = true }
+  }, [blocked.userId])
+
+  const handleUnblock = async () => {
+    if (!window.confirm(`Unblock ${blocked.displayName}?`)) return
+    setBusy(true)
+    try {
+      await unblockUser(blocked.userId, clubId)
+      toast.success(`${blocked.displayName} has been unblocked.`)
+      onActioned?.()
+    } catch (err) {
+      console.error('[blocked-row] unblock failed:', err.code || err.name, '—', err.message)
+      toast.error("Couldn't unblock user.")
+      setBusy(false)
+    }
+  }
+
+  return (
+    <li className="flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-gray-900 border border-red-200 dark:border-red-900">
+      {memberUser?.photoURL ? (
+        <img src={memberUser.photoURL} alt="" className="size-8 rounded-full object-cover" />
+      ) : (
+        <div className="size-8 rounded-full bg-gray-300 dark:bg-gray-700" />
+      )}
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+          {blocked.displayName}
+        </p>
+        <p className="text-xs text-red-500 dark:text-red-400">Blocked</p>
+      </div>
+      <button
+        onClick={handleUnblock}
+        disabled={busy}
+        className="px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-60 text-gray-700 dark:text-gray-300 text-xs font-medium transition-colors"
+      >
+        Unblock
       </button>
     </li>
   )

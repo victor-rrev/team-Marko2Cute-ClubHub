@@ -191,6 +191,15 @@ service cloud.firestore {
         // Updates and deletes only via Cloud Function trigger.
         allow update, delete: if false;
       }
+
+      // Blocked users subcollection — admin/owner only
+      match /blockedUsers/{userId} {
+        allow read: if isClubAdmin(clubId) || isUser(userId);
+        allow create, update: if isClubAdmin(clubId)
+          && request.resource.data.keys().hasOnly(['userId', 'displayName', 'blockedAt'])
+          && request.resource.data.userId == userId;
+        allow delete: if isClubAdmin(clubId);
+      }
     }
 
     // --- memberships --------------------------------------------------
@@ -212,6 +221,7 @@ service cloud.firestore {
         && validRole(request.resource.data.role)
         && request.resource.data.customRoles is list
         && request.resource.data.customRoles.size() == 0
+        && !exists(/databases/$(database)/documents/clubs/$(request.resource.data.clubId)/blockedUsers/$(request.auth.uid))
         && (
           // Founder seeding their owner membership for a club they just created
           (request.resource.data.role == 'owner'

@@ -139,6 +139,11 @@ function CommentNode({ postId, comment: initialComment, onUpdated }) {
             <span className="font-medium text-gray-900 dark:text-gray-100">
               {isDeleted ? '...' : (author?.displayName ?? '...')}
             </span>
+            {!isDeleted && author?.gradeLevel && (
+              <span className="text-gray-400 dark:text-gray-500">
+                · {author.gradeLevel[0].toUpperCase() + author.gradeLevel.slice(1)} · {author.pronouns}
+              </span>
+            )}
             {createdDate && <span>{dayjs(createdDate).fromNow()}</span>}
           </div>
 

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { doc, serverTimestamp, updateDoc } from 'firebase/firestore'
+import { GRADE_LEVELS, PRONOUNS } from '../lib/constants'
 import { useAuth } from '../contexts/AuthContext'
 import { db } from '../lib/firebase'
 import { listUserMemberships } from '../services/memberships'
@@ -13,6 +14,38 @@ export default function Account() {
   const [clubs, setClubs] = useState([])
   const [loadingClubs, setLoadingClubs] = useState(true)
   const [uploading, setUploading] = useState(false)
+  const [editingProfile, setEditingProfile] = useState(false)
+  const [draftGrade, setDraftGrade] = useState('')
+  const [draftPronouns, setDraftPronouns] = useState('')
+  const [savingProfile, setSavingProfile] = useState(false)
+
+  const handleEditProfile = () => {
+    setDraftGrade(userDoc?.gradeLevel ?? '')
+    setDraftPronouns(userDoc?.pronouns ?? '')
+    setEditingProfile(true)
+  }
+
+  const handleSaveProfile = async () => {
+    if (!draftGrade || !draftPronouns) {
+      toast.error('Please select both grade and pronouns.')
+      return
+    }
+    setSavingProfile(true)
+    try {
+      await updateDoc(doc(db, 'users', user.uid), {
+        gradeLevel: draftGrade,
+        pronouns: draftPronouns,
+        updatedAt: serverTimestamp(),
+      })
+      toast.success('Profile updated.')
+      setEditingProfile(false)
+    } catch (err) {
+      console.error('[account] profile update failed:', err.code || err.name, '—', err.message)
+      toast.error("Couldn't update profile.")
+    } finally {
+      setSavingProfile(false)
+    }
+  }
   const fileRef = useRef(null)
 
   useEffect(() => {
@@ -104,16 +137,66 @@ export default function Account() {
             className="hidden"
           />
         </div>
-        <div>
+        <div className="flex-1">
           <p className="font-semibold text-gray-900 dark:text-gray-100">
             {user?.displayName || 'You'}
           </p>
           <p className="text-sm text-gray-500 dark:text-gray-400">{user?.email}</p>
-          {userDoc?.gradeLevel && (
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              {userDoc.gradeLevel[0].toUpperCase() + userDoc.gradeLevel.slice(1)} ·{' '}
-              {userDoc.pronouns}
-            </p>
+
+          {editingProfile ? (
+            <div className="mt-2 space-y-2">
+              <select
+                value={draftGrade}
+                onChange={(e) => setDraftGrade(e.target.value)}
+                className="text-xs rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 text-gray-700 dark:text-gray-300 px-2 py-1"
+              >
+                <option value="">Grade...</option>
+                {GRADE_LEVELS.map((g) => (
+                  <option key={g} value={g}>
+                    {g[0].toUpperCase() + g.slice(1)}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={draftPronouns}
+                onChange={(e) => setDraftPronouns(e.target.value)}
+                className="ml-2 text-xs rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 text-gray-700 dark:text-gray-300 px-2 py-1"
+              >
+                <option value="">Pronouns...</option>
+                {PRONOUNS.map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+              <div className="flex gap-2 mt-1">
+                <button
+                  onClick={handleSaveProfile}
+                  disabled={savingProfile}
+                  className="px-3 py-1 rounded-lg bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white text-xs font-medium transition-colors"
+                >
+                  {savingProfile ? 'Saving...' : 'Save'}
+                </button>
+                <button
+                  onClick={() => setEditingProfile(false)}
+                  className="px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 text-xs font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-1 flex items-center gap-2">
+              {userDoc?.gradeLevel && (
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {userDoc.gradeLevel[0].toUpperCase() + userDoc.gradeLevel.slice(1)} · {userDoc.pronouns}
+                </p>
+              )}
+              <button
+                onClick={handleEditProfile}
+                className="text-xs text-orange-500 hover:text-orange-600 transition-colors"
+              >
+                Edit
+              </button>
+            </div>
           )}
         </div>
       </div>
