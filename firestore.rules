@@ -200,6 +200,14 @@ service cloud.firestore {
           && request.resource.data.userId == userId;
         allow delete: if isClubAdmin(clubId);
       }
+
+      match /adminRequests/{userId} {
+        allow read: if isClubOwner(clubId) || isUser(userId);
+        allow create: if isUser(userId)
+          && isActiveMember(clubId)
+          && request.resource.data.userId == userId;
+        allow delete: if isClubOwner(clubId) || isUser(userId);
+      }
     }
 
     // --- memberships --------------------------------------------------

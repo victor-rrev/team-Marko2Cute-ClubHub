@@ -12,9 +12,12 @@ import {
   joinClub,
   kickMember,
   leaveClub,
+  listAdminRequests,
   listBlockedUsers,
   listClubMembers,
   listPendingRequests,
+  removeAdminRequest,
+  requestAdmin,
   setMemberRole,
   unblockUser,
 } from '../services/memberships'
@@ -50,7 +53,7 @@ export default function ClubDetail() {
   const [loading, setLoading] = useState(true)
   const [actionPending, setActionPending] = useState(false)
   const [isBlocked, setIsBlocked] = useState(false)
-
+  const [adminRequests, setAdminRequests] = useState([])
   const [tab, setTab] = useState('posts')
   const [posts, setPosts] = useState([])
   const [events, setEvents] = useState([])
@@ -124,14 +127,16 @@ export default function ClubDetail() {
           const result = await listClubMembers(clubId)
           if (!cancelled) setMembers(result)
           if (isAdmin) {
-          const [pending, blocked] = await Promise.all([
+          const [pending, blocked, adminReqs] = await Promise.all([
             listPendingRequests(clubId),
             listBlockedUsers(clubId),
+            isOwner ? listAdminRequests(clubId) : Promise.resolve([]),
           ])
           if (!cancelled) {
             const blockedIds = new Set(blocked.map((b) => b.userId))
             setPendingRequests(pending.filter((p) => !blockedIds.has(p.userId)))
             setBlockedUsers(blocked)
+            setAdminRequests(adminReqs)
           }
           } else if (!cancelled) {
             setPendingRequests([])
@@ -200,14 +205,14 @@ export default function ClubDetail() {
 
   if (loading || !club) {
     return (
-      <div className="max-w-3xl mx-auto px-6 py-8">
+      <div className="max-w-3xl mx-auto px-4 py-5 sm:px-6 sm:py-8">
         <p className="text-gray-500 dark:text-gray-400">Loading...</p>
       </div>
     )
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-8">
+    <div className="max-w-3xl mx-auto px-4 py-5 sm:px-6 sm:py-8">
       {backTo && (
         <Link
           to={backTo.path}
@@ -219,8 +224,8 @@ export default function ClubDetail() {
       )}
 
       {/* Header card */}
-      <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 mb-6">
-        <div className="flex items-start gap-4">
+      <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 sm:p-6 mb-6">
+        <div className="flex items-start gap-3 sm:gap-4">
           <ClubLogo
             club={club}
             size="lg"
@@ -228,33 +233,46 @@ export default function ClubDetail() {
             onUpdated={(patch) => setClub((prev) => ({ ...prev, ...patch }))}
           />
           <div className="flex-1 min-w-0">
-            <div className="flex items-start gap-2">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {club.name}
-              </h1>
-              {club.joinPolicy === 'approval' && (
-                <FiLock
-                  className="size-4 text-gray-400 shrink-0 mt-1.5"
-                  title="Approval required"
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start gap-2">
+                  <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 break-words">
+                    {club.name}
+                  </h1>
+                  {club.joinPolicy === 'approval' && (
+                    <FiLock
+                      className="size-4 text-gray-400 shrink-0 mt-1.5"
+                      title="Approval required"
+                    />
+                  )}
+                </div>
+                <div className="mt-1 flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                  <span className="inline-flex items-center gap-1">
+                    <FiUsers className="size-3.5" />
+                    {club.memberCount ?? 0}{' '}
+                    {club.memberCount === 1 ? 'member' : 'members'}
+                  </span>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {club.categories?.map((cat) => (
+                    <span
+                      key={cat}
+                      className={`px-2 py-0.5 rounded-full text-xs ${categoryChipClass(cat)}`}
+                    >
+                      {cat}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="shrink-0">
+                <JoinButton
+                  membership={membership}
+                  joinPolicy={club.joinPolicy}
+                  actionPending={actionPending}
+                  onJoin={handleJoin}
+                  onLeave={handleLeave}
                 />
-              )}
-            </div>
-            <div className="mt-1 flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
-              <span className="inline-flex items-center gap-1">
-                <FiUsers className="size-3.5" />
-                {club.memberCount ?? 0}{' '}
-                {club.memberCount === 1 ? 'member' : 'members'}
-              </span>
-            </div>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {club.categories?.map((cat) => (
-                <span
-                  key={cat}
-                  className={`px-2 py-0.5 rounded-full text-xs ${categoryChipClass(cat)}`}
-                >
-                  {cat}
-                </span>
-              ))}
+              </div>
             </div>
           </div>
           <div className="shrink-0">
@@ -285,12 +303,12 @@ export default function ClubDetail() {
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200 dark:border-gray-800 mb-4 flex gap-1">
+      <div className="border-b border-gray-200 dark:border-gray-800 mb-4 flex gap-1 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
         {tabs.map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`px-4 py-2 text-sm font-medium capitalize transition-colors -mb-px border-b-2 ${
+            className={`shrink-0 px-3 sm:px-4 py-2 text-sm font-medium capitalize transition-colors -mb-px border-b-2 ${
               tab === t
                 ? 'border-orange-500 text-orange-600 dark:text-orange-400'
                 : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
@@ -353,6 +371,23 @@ export default function ClubDetail() {
 
       {tab === 'members' && (
         <div className="space-y-4">
+          {isOwner && adminRequests.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                Admin requests ({adminRequests.length})
+              </h3>
+              <ul className="space-y-2">
+                {adminRequests.map((r) => (
+                  <AdminRequestRow
+                    key={r.id}
+                    request={r}
+                    clubId={clubId}
+                    onActioned={refreshTab}
+                  />
+                ))}
+              </ul>
+            </div>
+          )}
           {isAdmin && pendingRequests.length > 0 && (
             <div>
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
@@ -503,6 +538,8 @@ function MemberRow({
   const isThisOwner = membership.role === 'owner'
   const canKick = isAdmin && !isSelf && !isThisOwner
   const canChangeRole = isOwner && !isSelf && !isThisOwner
+  const isThisMember = membership.role === 'member'
+  const canRequestAdmin = isSelf && membership.role === 'member'
 
   const handleKick = async () => {
     if (!window.confirm(`Kick ${displayName} from the club?`)) return
@@ -519,6 +556,34 @@ function MemberRow({
         err.message,
       )
       toast.error("Couldn't remove member.")
+      setBusy(false)
+    }
+  }
+
+  const handleBlock = async () => {
+    if (!window.confirm(`Kick and block ${displayName} permanently?`)) return
+    setBusy(true)
+    try {
+      await blockUser(membership.userId, clubId, displayName)
+      toast.success(`${displayName} has been kicked and blocked.`)
+      onActioned?.()
+    } catch (err) {
+      console.error('[member-row] block failed:', err.code || err.name, '—', err.message)
+      toast.error("Couldn't block member.")
+      setBusy(false)
+    }
+  }
+
+  const handleRequestAdmin = async () => {
+    if (!window.confirm('Send a request to become Admin?')) return
+    setBusy(true)
+    try {
+      await requestAdmin(membership.userId, clubId, memberUser?.displayName || 'User')
+      toast.success('Admin request sent.')
+    } catch (err) {
+      console.error('[member-row] admin request failed:', err.code || err.name, '—', err.message)
+      toast.error("Couldn't send request.")
+    } finally {
       setBusy(false)
     }
   }
@@ -587,14 +652,32 @@ function MemberRow({
           <option value="owner">Transfer ownership</option>
         </select>
       )}
-      {canKick && (
+      {canRequestAdmin && (
         <button
-          onClick={handleKick}
+          onClick={handleRequestAdmin}
           disabled={busy}
-          className="text-xs px-2 py-1 rounded-md text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-60 transition-colors"
+          className="text-xs px-2 py-1 rounded-md border border-orange-300 dark:border-orange-700 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 disabled:opacity-60 transition-colors"
         >
-          Kick
+          Request Admin
         </button>
+      )}
+      {canKick && (
+        <>
+          <button
+            onClick={handleKick}
+            disabled={busy}
+            className="text-xs px-2 py-1 rounded-md text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-60 transition-colors"
+          >
+            Kick
+          </button>
+          <button
+            onClick={handleBlock}
+            disabled={busy}
+            className="text-xs px-2 py-1 rounded-md border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-60 transition-colors"
+          >
+            Block
+          </button>
+        </>
       )}
     </li>
   )
@@ -736,6 +819,76 @@ function BlockedRow({ blocked, clubId, onActioned }) {
         className="px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-60 text-gray-700 dark:text-gray-300 text-xs font-medium transition-colors"
       >
         Unblock
+      </button>
+    </li>
+  )
+}
+
+function AdminRequestRow({ request, clubId, onActioned }) {
+  const [memberUser, setMemberUser] = useState(null)
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    getUser(request.userId).then((u) => {
+      if (!cancelled) setMemberUser(u)
+    })
+    return () => { cancelled = true }
+  }, [request.userId])
+
+  const displayName = memberUser?.displayName || request.displayName || 'User'
+
+  const handleAgree = async () => {
+    setBusy(true)
+    try {
+      await setMemberRole(request.userId, clubId, 'admin')
+      await removeAdminRequest(request.userId, clubId)
+      toast.success(`${displayName} is now an Admin.`)
+      onActioned?.()
+    } catch (err) {
+      console.error('[admin-request-row] agree failed:', err.code || err.name, '—', err.message)
+      toast.error("Couldn't promote member.")
+      setBusy(false)
+    }
+  }
+
+  const handleIgnore = async () => {
+    setBusy(true)
+    try {
+      await removeAdminRequest(request.userId, clubId)
+      toast.success('Request ignored.')
+      onActioned?.()
+    } catch (err) {
+      console.error('[admin-request-row] ignore failed:', err.code || err.name, '—', err.message)
+      toast.error("Couldn't ignore request.")
+      setBusy(false)
+    }
+  }
+
+  return (
+    <li className="flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-gray-900 border border-orange-200 dark:border-orange-800">
+      {memberUser?.photoURL ? (
+        <img src={memberUser.photoURL} alt="" className="size-8 rounded-full object-cover" />
+      ) : (
+        <div className="size-8 rounded-full bg-gray-300 dark:bg-gray-700" />
+      )}
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{displayName}</p>
+        <p className="text-xs text-orange-500 dark:text-orange-400">Wants to become Admin</p>
+      </div>
+      <button
+        onClick={handleAgree}
+        disabled={busy}
+        className="px-3 py-1 rounded-lg bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white text-xs font-medium transition-colors"
+      >
+        Agree
+      </button>
+      <button
+        onClick={handleIgnore}
+        disabled={busy}
+        className="px-3 py-1 rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-60 text-gray-700 dark:text-gray-300 text-xs font-medium transition-colors"
+      >
+        Ignore
       </button>
     </li>
   )
