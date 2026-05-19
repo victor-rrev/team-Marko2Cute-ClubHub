@@ -242,3 +242,29 @@ export async function listBlockedUsers(clubId) {
   const snap = await getDocs(collection(db, 'clubs', clubId, 'blockedUsers'))
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
 }
+
+/**
+ * Sends an admin request from a member to the club owner.
+ */
+export async function requestAdmin(userId, clubId, displayName) {
+  await setDoc(doc(db, 'clubs', clubId, 'adminRequests', userId), {
+    userId,
+    displayName: displayName || 'User',
+    requestedAt: serverTimestamp(),
+  })
+}
+
+/**
+ * Removes an admin request (after approve or ignore).
+ */
+export async function removeAdminRequest(userId, clubId) {
+  await deleteDoc(doc(db, 'clubs', clubId, 'adminRequests', userId))
+}
+
+/**
+ * Lists all pending admin requests for a club.
+ */
+export async function listAdminRequests(clubId) {
+  const snap = await getDocs(collection(db, 'clubs', clubId, 'adminRequests'))
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+}
